@@ -11,11 +11,7 @@ public interface IPlayerService {
 	
 	public Player getPlayerByUsername(String username);
 	
-	public Transaction updateBalance(Transaction trans);
-	
-	public Transaction save(Transaction transaction);
-	
-	public Transaction getTransactionById(Integer id);
-	
+	public Transaction updateBalance(Integer playerId, Transaction trans);
+			
 	public List<Transaction> getTransactionsByPlayerId(Integer id);
 }

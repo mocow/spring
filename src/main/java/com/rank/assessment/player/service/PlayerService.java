@@ -1,12 +1,15 @@
 package com.rank.assessment.player.service;
 
-import java.time.LocalDateTime;
 import java.util.List;
+
+import javax.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import com.rank.assessment.exception.PlayerBadRequestException;
+import com.rank.assessment.exception.PlayerTeaPotException;
 import com.rank.assessment.player.model.AccountBalance;
 import com.rank.assessment.player.model.Player;
 import com.rank.assessment.player.model.Transaction;
@@ -34,40 +37,60 @@ public class PlayerService implements IPlayerService
 	@Override
 	public Player getPlayerById(Integer id)
 	{
-		return playerRepository.findById(id).
-				orElse(null);
+		Player player = playerRepository.findById(id).
+		orElse(null);
+		
+		if(player == null)
+		{
+			throw new PlayerBadRequestException("Player with ID ("+id+") is not found.");
+		}
+		
+		return player;
 	}
 
 	@Override
 	public Player getPlayerByUsername(String username)
 	{
-		return playerRepository.findPlayerByUsername(username)
+		Player player =  playerRepository.findPlayerByUsername(username)
 				.orElse(null);
 		
+		if(player == null)
+		{
+			throw new PlayerBadRequestException("Player with userame ("+username+") is not found.");
+		}
+		return player;
 	}
 
 	@Override
-	public Transaction updateBalance(Transaction trans)
+	@Transactional
+	public Transaction updateBalance(Integer playerId, Transaction transaction)
 	{
-		trans = transactionRepository.save(trans);
-		AccountBalance balance = trans.getPlayer().getAccountBalance();
-		balance.setAmount(balance.getAmount() + trans.getTransactionAmount());
-		accountBalanceRepository.save(balance);
-		return trans;
-	}
-	
-	@Override
-	public Transaction save(Transaction transaction)
-	{
-		transaction.setCreatedAt(LocalDateTime.now());
+		if(transaction.getAmount() < 0)
+		{
+			throw new PlayerBadRequestException(("Error: amount is not suppose to be negative."));
+		}
+		
+		if(!transaction.isWager() && !transaction.isWin())
+		{
+			throw new PlayerBadRequestException(("Expected transaction type to be WAGER or WIN "));
+		}
+		
+		Player player = this.getPlayerById(playerId);
+		
+		if(transaction.isWager() && transaction.getAmount() >  player.getAccountBalance().getAmount())
+		{
+			throw new PlayerTeaPotException("You dont have enough funds.");
+		}
+		
+		transaction.setPlayerId(playerId);
+		transaction.setPlayer(player);
 		transaction = transactionRepository.save(transaction);
+		
+		AccountBalance balance = transaction.getPlayer().getAccountBalance();
+		balance.setAmount(balance.getAmount() + transaction.getTransactionAmount());
+		accountBalanceRepository.save(balance);
+		
 		return transaction;
-	}
-
-	@Override
-	public Transaction getTransactionById(Integer id)
-	{
-		return transactionRepository.getReferenceById(id);
 	}
 
 	@Override
