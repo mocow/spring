@@ -1,0 +1,11 @@
+version: '3.7'
+
+services:
+  rank-casino-app:
+    build:
+      context: .
+      target: dev
+    volumes:
+      - .:/var/www
+    ports:
+      - 8080:8080
